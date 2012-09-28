@@ -2,7 +2,7 @@
 
 `nagios2graphite` is a nagios event broker module that provides nagios information on an UDP graphite server
 
-** Still in Alpha version - Hack away **
+** Still in Alpha version - and does not do what the README say - but close - Hack away **
 
 currently supports service and host checks
 
