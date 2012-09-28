@@ -13,6 +13,9 @@
 #include "include/nagios/nebcallbacks.h"
 
 #define DEFAULT_GRAPHITE_PORT 2003
+#define DEFAULT_GRAPHITE_HOST "localhost"
+#define DEFAULT_GRAPHITE_PREFIX "nagios"
+#define DEFAULT_GRAPHITE_DEBUG 0
 
 #define LG_INFO 262144
 #define LG_WARN  LOG_INFO
@@ -25,6 +28,9 @@
 void *g_nagios_graphite_handle = NULL;
 void *g_nagios_graphite_context;
 int   g_nagios_graphite_port = DEFAULT_GRAPHITE_PORT;
+char *g_nagios_graphite_host = DEFAULT_GRAPHITE_HOST;
+char *g_nagios_graphite_prefix = DEFAULT_GRAPHITE_PREFIX;
+int   g_nagios_graphite_debug = DEFAULT_GRAPHITE_DEBUG;
 
 NEB_API_VERSION(CURRENT_NEB_API_VERSION)
 
@@ -70,27 +76,44 @@ void nagios_graphite_parse_arguments(const char *args) {
     if(!strncmp(key, "port", 4)) {
       g_nagios_graphite_port = atoi(value);
     }
+
+    if(!strncmp(key, "debug", 4)) {
+      g_nagios_graphite_debug = atoi(value);
+    }
+
+    if(!strncmp(key, "host", 4)) {
+      g_nagios_graphite_host= strdup(value);
+      nagios_graphite_logger(LG_DEBUG, "'%s'\n",g_nagios_graphite_host); 
+    }
+
+    if(!strncmp(key, "prefix", 6)) {
+      g_nagios_graphite_prefix = strdup(value);
+      nagios_graphite_logger(LG_DEBUG, "'%s'\n",g_nagios_graphite_prefix); 
+    }
+
     arg_term = strtok(NULL, " =");
   }
 }
 
 int nagios_graphite_send_servicecheck(nebstruct_service_check_data *check_data) {
 
-  struct timeval ts ;
-  char metricvalue[1024];      
-  char hostname[1024];      
-  char servicename[1024];      
-  char metricprefix[1024];      
-  char metricname[1024];      
+  char hostname[1024];
+  char servicename[1024];
+  char metricprefix[1024];
 
-  gettimeofday(&ts,NULL);
-
-  // Convert hostname to string
+  // Sanitize hostname string
   sprintf(hostname,"%s",check_data->host_name);
 
-  // Sanitize check name
-  sprintf(servicename,"%s",check_data->service_description);
   int i;
+  for ( i = 0 ; hostname[i]; i++) {
+	hostname[i] = tolower(hostname[i]);
+	if (! isalnum(hostname[i])) {
+		hostname[i]='_';
+	}
+  }
+
+  // Sanitize service name
+  sprintf(servicename,"%s",check_data->service_description);
   for ( i = 0 ; servicename[i]; i++) {
 	servicename[i] = tolower(servicename[i]);
 	if (! isalnum(servicename[i])) {
@@ -98,62 +121,102 @@ int nagios_graphite_send_servicecheck(nebstruct_service_check_data *check_data) 
 	}
   }
 
-  // Calculate prefix
-  sprintf(metricprefix,"%s.%s.servicecheck.%s","nagios",hostname,servicename);
-  
-  sprintf(metricname, "%s.%s",metricprefix,"current_attempt");
-  sprintf(metricvalue, "%i",check_data->current_attempt);
-  send_graphite("localhost",2003,metricname,metricvalue,ts.tv_sec);
+  // Calculate service prefix
+  sprintf(metricprefix,"%s.%s",hostname,servicename);
 
-  sprintf(metricname, "%s.%s",metricprefix,"max_attempts");
-  sprintf(metricvalue, "%i",check_data->max_attempts);
-  send_graphite("localhost",2003,metricname,metricvalue,ts.tv_sec);
+  // Send services metric
+  nagios_graphite_send_genericcheck("service",metricprefix,check_data) ;
 
-  sprintf(metricname, "%s.%s",metricprefix,"state_type");
-  sprintf(metricvalue, "%i",check_data->state_type);
-  send_graphite("localhost",2003,metricname,metricvalue,ts.tv_sec);
-
-  sprintf(metricname, "%s.%s",metricprefix,"state");
-  sprintf(metricvalue, "%i",check_data->state);
-  send_graphite("localhost",2003,metricname,metricvalue,ts.tv_sec);
-
-  sprintf(metricname, "%s.%s",metricprefix,"execution_time");
-  sprintf(metricvalue, "%f",check_data->execution_time);
-  send_graphite("localhost",2003,metricname,metricvalue,ts.tv_sec);
-
-  sprintf(metricname, "%s.%s",metricprefix,"early_timeout");
-  sprintf(metricvalue, "%d",check_data->early_timeout);
-  send_graphite("localhost",2003,metricname,metricvalue,ts.tv_sec);
-
-  sprintf(metricname, "%s.%s",metricprefix,"latency");
-  sprintf(metricvalue, "%f",check_data->latency);
-  send_graphite("localhost",2003,metricname,metricvalue,ts.tv_sec);
-
-  sprintf(metricname, "%s.%s",metricprefix,"return_code");
-  sprintf(metricvalue, "%d",check_data->return_code);
-  send_graphite("localhost",2003,metricname,metricvalue,ts.tv_sec);
-
-  if(check_data->perf_data) {
-  }
-  /*
-  if(check_data->perf_data)
-    json_add_pair(jobj, "performance", check_data->perf_data);
-  */
   return 0;
 }
 
 int nagios_graphite_send_hostcheck(nebstruct_host_check_data *check_data) {
-  struct timeval ts ;
-  gettimeofday(&ts,NULL);
-  send_graphite("localhost",2003,"nagios.myhost.hostcheck.test.value","33",ts.tv_sec);
+
+  char hostname[1024];
+  char metricprefix[1024];
+
+  // Convert hostname to string
+  sprintf(hostname,"%s",check_data->host_name);
+
+  int i;
+  for ( i = 0 ; hostname[i]; i++) {
+	hostname[i] = tolower(hostname[i]);
+	if (! isalnum(hostname[i])) {
+		hostname[i]='_';
+	}
+  }
+
+  // Calculate host prefix
+  sprintf(metricprefix,"%s",hostname);
+
+  // Send host metric
+  nagios_graphite_send_genericcheck("host",metricprefix,check_data);
+  return 0;
 }
 
-int nagios_graphite_send_notification(nebstruct_notification_data *notification_data) {
+int nagios_graphite_send_genericcheck(char *type,char *metricprefix,nebstruct_service_check_data *check_data) {
+
   struct timeval ts ;
+  char metricname[1024];
+  char metricvalue[1024];
+
   gettimeofday(&ts,NULL);
-  //send_graphite("localhost",2003,"nagios.myhost.notification.test.value","33",ts.tv_sec);
+
+  sprintf(metricname, "%s.%s.%s",type,metricprefix,"current_attempt");
+  sprintf(metricvalue, "%i",check_data->current_attempt);
+  send_graphite(metricname,metricvalue,ts.tv_sec);
+
+  sprintf(metricname, "%s.%s.%s",type,metricprefix,"max_attempts");
+  sprintf(metricvalue, "%i",check_data->max_attempts);
+  send_graphite(metricname,metricvalue,ts.tv_sec);
+
+  sprintf(metricname, "%s.%s.%s",type,metricprefix,"check_type");
+  sprintf(metricvalue, "%i",check_data->check_type);
+  send_graphite(metricname,metricvalue,ts.tv_sec);
+
+  sprintf(metricname, "%s.%s.%s",type,metricprefix,"state_type");
+  sprintf(metricvalue, "%i",check_data->state_type);
+  send_graphite(metricname,metricvalue,ts.tv_sec);
+
+  sprintf(metricname, "%s.%s.%s",type,metricprefix,"state");
+  sprintf(metricvalue, "%i",check_data->state);
+  send_graphite(metricname,metricvalue,ts.tv_sec);
+
+  sprintf(metricname, "%s.%s.%s",type,metricprefix,"execution_time");
+  sprintf(metricvalue, "%f",check_data->execution_time);
+  send_graphite(metricname,metricvalue,ts.tv_sec);
+
+  sprintf(metricname, "%s.%s.%s",type,metricprefix,"early_timeout");
+  sprintf(metricvalue, "%d",check_data->early_timeout);
+  send_graphite(metricname,metricvalue,ts.tv_sec);
+
+  sprintf(metricname, "%s.%s.%s",type,metricprefix,"timeout");
+  sprintf(metricvalue, "%d",check_data->timeout);
+  send_graphite(metricname,metricvalue,ts.tv_sec);
+
+  sprintf(metricname, "%s.%s.%s",type,metricprefix,"latency");
+  sprintf(metricvalue, "%f",check_data->latency);
+  send_graphite(metricname,metricvalue,ts.tv_sec);
+
+  sprintf(metricname, "%s.%s.%s",type,metricprefix,"return_code");
+  sprintf(metricvalue, "%d",check_data->return_code);
+  send_graphite(metricname,metricvalue,ts.tv_sec);
+
+  /*
+  if(check_data->perf_data) {
+        //nagios_graphite_logger(LG_INFO, "'%s'\n", check_data->perf_data);
+  }
+  */
+
+  return 0;
+}
+
+
+int nagios_graphite_send_notification(nebstruct_notification_data *notification_data) {
 	/*
 
+	  struct timeval ts ;
+	  gettimeofday(&ts,NULL);
         json_object * jobj = json_object_new_object();
 
         json_add_pair(jobj, "hostname",        notification_data->host_name);
@@ -179,17 +242,8 @@ int nagios_graphite_send_notification(nebstruct_notification_data *notification_
         sprintf(cast_buffer, "%i",             notification_data->contacts_notified);
         json_add_pair(jobj, "contacts_notified",      cast_buffer);
 
-        json_object_object_add(jevent, "payload", jobj);
-
-        nagios_graphite_logger(LG_INFO, "'%s'\n", json_object_to_json_string(jevent));
-        sprintf(message_buffer, "%s", json_object_to_json_string(jevent));
-
-        s_send(g_nagios_graphite_publisher, message_buffer);
-        json_object_put(jevent);
-        json_object_put(jobj);
-
-        return 0;
 	*/
+        return 0;
 }
 
 int nagios_graphite_broker_check(int event_type, void *data) {

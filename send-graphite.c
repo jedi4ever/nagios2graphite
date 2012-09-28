@@ -12,7 +12,12 @@
 
 #define LG_INFO 262144 
 
-int send_graphite(char *hostname,int port,char *name,char *value,int stamp) {
+extern char* g_nagios_graphite_host;
+extern char* g_nagios_graphite_prefix;
+int extern g_nagios_graphite_port;
+int extern g_nagios_graphite_debug;
+
+int send_graphite(char *name,char *value,int stamp) {
 
 	int	graphite_sock;
 	struct	sockaddr_in server;
@@ -33,11 +38,11 @@ int send_graphite(char *hostname,int port,char *name,char *value,int stamp) {
 	/* initialize server addr */
 	memset((char *) &server, 0, sizeof(struct sockaddr_in));
 	server.sin_family = AF_INET;
-	server.sin_port = htons(port);
+	server.sin_port = htons(g_nagios_graphite_port);
 
 	/* get ip address */
 	struct hostent *sp;
-	sp = gethostbyname(hostname);
+	sp = gethostbyname(g_nagios_graphite_host);
 	memcpy(&server.sin_addr, sp->h_addr, sp->h_length);
 
 	/* convert timestamp to string */
@@ -48,7 +53,7 @@ int send_graphite(char *hostname,int port,char *name,char *value,int stamp) {
 	int message_size = sizeof(name)+sizeof(value)+sizeof(buf)+3*sizeof(char);
 	message = malloc(message_size);
 
-	sprintf(message,"%s %s %d\n",name,value,stamp);
+	sprintf(message,"%s.%s %s %d\n",g_nagios_graphite_prefix,name,value,stamp);
 	nagios_graphite_logger(LG_INFO, message);     
 
 	/* send message */
@@ -61,4 +66,3 @@ int send_graphite(char *hostname,int port,char *name,char *value,int stamp) {
 	free(message);
 	return 0;
 }
-
