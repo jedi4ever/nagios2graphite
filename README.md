@@ -22,16 +22,20 @@ Requires basic compile tools to be installed.
     make install
 
 ## Configuration
-Add the broker module to your `nagios.cfg`.
+Configure broker events and add the broker module to your `nagios.cfg`.
 
+    event_broker_options=-1 # Yes that's -1
     broker_module=/var/lib/nagios3/nagios2graphite.o
 
-If you already have a broker_module in use, you need to ADD this line. Nagios will define multiple broker active.
+This will send to localhost on port 2003. To change this supply:
 
+    broker_module=/var/lib/nagios3/nagios2graphite.o host="somehost.org" port=2003
 
-Enable broker events
+This will send to `somehost.org` on port 2003. To activate debug:
 
-    event_broker_options=1
+    broker_module=/var/lib/nagios3/nagios2graphite.o host="somehost.org" port=2003
+
+Note: If you already have a broker_module line, you need to ADD another line. Nagios will define multiple brokers active.
 
 ## Loading
 You need to restart your nagios config if you changed this lines.
@@ -60,3 +64,4 @@ Check in `/var/log/nagios3/nagios.log` to see if the module is loaded
 - Graphios: python based - <https://github.com/shawn-sterling/graphios> to graphite
 - Gearphite: python based - <https://github.com/ahhdem/gearphite> to opentsdb
 - Icinga-to-graphite: <https://github.com/roidelapluie/icinga-to-graphite>
+
