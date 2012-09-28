@@ -232,7 +232,7 @@ int nagios_graphite_broker_process(int event_type __attribute__ ((__unused__)), 
 int nebmodule_init(int flags __attribute__ ((__unused__)), char *args, void *handle) {
   g_nagios_graphite_handle = handle;
 
-  nagios_graphite_logger(LG_INFO, "nagios-graphite by Patrick Debois");
+  nagios_graphite_logger(LG_INFO, "nagios2graphite by Patrick Debois");
 
   nagios_graphite_parse_arguments(args);
 

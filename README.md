@@ -42,6 +42,10 @@ You need to restart your nagios config if you changed this lines.
 
 Check in `/var/log/nagios3/nagios.log` to see if the module is loaded
 
+  [1348838041] graphite: nagios2graphite by Patrick Debois
+  [1348838041] graphite: successfully finished initialization
+  [1348838041] Event broker module '/var/lib/nagios3/nagios2graphite.o' initialized successfully.
+
 ## Sample debug output
 
     [1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.current_attempt 3 1348836352
