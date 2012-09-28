@@ -69,3 +69,5 @@ Check in `/var/log/nagios3/nagios.log` to see if the module is loaded
 - Gearphite: python based - <https://github.com/ahhdem/gearphite> to opentsdb
 - Icinga-to-graphite: <https://github.com/roidelapluie/icinga-to-graphite>
 - Via collectd: <https://github.com/Fotolia/collectd-mod-nagiostats> and then you can forward it to graphite using carbon-writer
+
+- @auxesis on latency in checks - <http://holmwood.id.au/~lindsay/2012/01/09/monitoring-sucks-latency-sucks-more/>
