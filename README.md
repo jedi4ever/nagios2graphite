@@ -9,9 +9,9 @@ currently supports service and host checks
 ## Requirements
 Configure graphite with UDP enabled. In your `carbon.cfg`:
 
-		ENABLE_UDP_LISTENER = True        
-		UDP_RECEIVER_INTERFACE = 127.0.0.1
-		UDP_RECEIVER_PORT = 2003          
+    ENABLE_UDP_LISTENER = True
+    UDP_RECEIVER_INTERFACE = 127.0.0.1
+    UDP_RECEIVER_PORT = 2003
 
 Why UDP? We don't want our monitoring system to become unstable if our graphite goes down do we?
 
@@ -26,20 +26,28 @@ Add the broker module to your `nagios.cfg`.
 
     broker_module=/var/lib/nagios3/nagios2graphite.o
 
-Enable broker events 
+If you already have a broker_module in use, you need to ADD this line. Nagios will define multiple broker active.
+
+
+Enable broker events
 
     event_broker_options=1
 
-## Sample metrics
+## Loading
+You need to restart your nagios config if you changed this lines.
 
-		[1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.current_attempt 3 1348836352       
-		[1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.max_attempts 3 1348836352          
-		[1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.state_type 1 1348836352            
-		[1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.state 2 1348836352                 
-		[1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.execution_time 1.002262 1348836352 
-		[1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.early_timeout 0 1348836352         
-		[1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.latency 0.243000 1348836352        
-		[1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.return_code 2 1348836352          
+Check in `/var/log/nagios3/nagios.log` to see if the module is loaded
+
+## Sample debug output
+
+    [1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.current_attempt 3 1348836352
+    [1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.max_attempts 3 1348836352
+    [1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.state_type 1 1348836352
+    [1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.state 2 1348836352
+    [1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.execution_time 1.002262 1348836352
+    [1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.early_timeout 0 1348836352
+    [1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.latency 0.243000 1348836352
+    [1348836352] graphite: nagios.vagrant-client.servicecheck.free_memory.return_code 2 1348836352
 
 ## Todo
 
