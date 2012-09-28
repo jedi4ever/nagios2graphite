@@ -33,7 +33,7 @@ This will send to localhost on port 2003. To change this supply:
 
 This will send to `somehost.org` on port 2003. To activate debug:
 
-    broker_module=/var/lib/nagios3/nagios2graphite.o host="somehost.org" port=2003
+    broker_module=/var/lib/nagios3/nagios2graphite.o host="somehost.org" port=2003 debug=1
 
 Note: If you already have a broker_module line, you need to ADD another line. Nagios will define multiple brokers active.
 
